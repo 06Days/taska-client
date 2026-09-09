@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { TaskList, Task } from "@/app/checklist/types/task"; // Added Task import
+import { TaskList, Task } from "@/app/checklist/types/task";
 import Navbar from "@/app/checklist/components/navbar";
 import TaskCard from "@/app/checklist/components/TaskCard";
 
@@ -13,6 +13,12 @@ export default function TaskaList() {
   const [lists, setTaskLists] = useState<TaskList[]>([]);
   const [newListTitle, setNewListTitle] = useState<string>('');
   const [newListName, setNewListName] = useState<string>('');
+  const [isEditingMode, setIsEditingMode] = useState<boolean>(false);
+
+  const toggleEdit = () => {
+    setIsEditingMode(prev => !prev);
+    loadAll();
+  };
 
   const loadAll = async () => {
     try {
@@ -103,8 +109,47 @@ export default function TaskaList() {
     }
   };
 
+  const handleUpdateListTitle = (listId: number, newTitle: string) => {
+    fetch(`${API_URL}/task-lists/${listId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setTaskLists(lists.map((list) => 
+          list.id === listId ? { ...list, title: data.title || newTitle } : list
+        ));
+      })
+      .catch((error) => console.error('Error updating list title', error));
+  };
+
+  const handleUpdateTaskTitle = (taskId: number, listId: number, newTitle: string) => {
+    fetch(`${API_URL}/task-lists/${listId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setTaskLists(lists.map((list) => 
+          list.id === listId ? {
+            ...list, 
+            tasks: list.tasks.map((task) => task.id === taskId ? data : task)
+          } : list
+        ));
+      })
+      .catch((error) => console.error('Error updating task title', error));
+  };
+
   return (
     <div className="container py-4">
+      <button 
+          className={`btn btn-sm ${isEditingMode ? 'btn-secondary' : 'btn-outline-secondary'}`}
+          onClick={toggleEdit}
+        >
+          {isEditingMode ? 'Done Editing' : 'Edit Mode'}
+        </button>
       <Navbar />
       
       {/* Create New List Section */}
@@ -138,6 +183,10 @@ export default function TaskaList() {
           onDeleteTask={handleDeleteTask} 
           onToggleTask={toggleTaskDone} 
           onReorderTasks={handleReorderTasks}
+          onUpdateListTitle={handleUpdateListTitle}
+          onUpdateTaskTitle={handleUpdateTaskTitle}
+          isEditingMode={isEditingMode}
+          toggleEdit={toggleEdit}
         />
       ))}
     </div>
