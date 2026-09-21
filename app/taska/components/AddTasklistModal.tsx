@@ -12,7 +12,7 @@ export default function AddTasklistModal({ onClose, onSubmit}: AddTasklistModalP
  
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SubmitEvent) => {
     e.preventDefault();
     if (!tasklistTitle.trim()) return;
 

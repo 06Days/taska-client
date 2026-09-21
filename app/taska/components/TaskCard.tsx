@@ -1,34 +1,49 @@
-import { TaskList, Task } from "@/app/checklist/types/task";
-import { useState, useRef, useEffect } from "react";
+import { TaskList, Task } from "@/app/taska/types/task";
+import { useState, useRef, useEffect, JSXElementConstructor, ReactElement, ReactNode, ReactPortal } from "react";
 import { ReactSortable } from "react-sortablejs";
 import AddTaskModal from './AddTaskModal';
+import AddTaskListModal from './AddTasklistModal';
 import styles from './TaskCard.module.css';
+
 interface TaskCardProps {
   list: TaskList;
   onAddTask: (listId: number, title: string, dueDate: string) => void;
   onDeleteTask: (taskId: number, listId: number) => void;
+  onDeleteList: (listId: number) =>void;
   onToggleTask: (taskId: number, listId: number) => void;
   onReorderTasks: (listId: number, newTasks: Task[], saveToBackend?: boolean) => void;
   onUpdateListTitle?: (listId: number, newTitle: string) => void;
   onUpdateTaskTitle?: (taskId: number, listId: number, newTitle: string) => void;
+  
   isEditingMode: boolean;
-  toggleEdit: () =>void;
+  toggleEdit: () => void;
 }
 
-export default function TaskCard({ list, onAddTask, onDeleteTask, onToggleTask, onReorderTasks, isEditingMode,onUpdateListTitle,
-  onUpdateTaskTitle}: TaskCardProps) {
+// interface TaskListCardProps{
+  
+// }
+
+export default function TaskCard({ 
+  list, 
+  onAddTask, 
+  onDeleteTask, 
+  onToggleTask, 
+  onReorderTasks, 
+  isEditingMode, 
+  onUpdateListTitle,
+  onUpdateTaskTitle,
+  onDeleteList
+}: TaskCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // for editing the titles of either lists or tasks
+  
   const [isEditingListTitle, setIsEditingListTitle] = useState(false);
   const [listTitleInput, setListTitleInput] = useState(list?.title || '');
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [taskTitleInput, setTaskTitleInput] = useState('');
 
   const inputRef = useRef<HTMLInputElement>(null);
-  // Safely fallback to an empty array to prevent undefined errors
   const tasksData = list?.tasks || [];
 
-  // Keep track of the live tasks array during drag operations
   const latestTasksRef = useRef<Task[]>(tasksData);
   latestTasksRef.current = tasksData;
 
@@ -39,7 +54,21 @@ export default function TaskCard({ list, onAddTask, onDeleteTask, onToggleTask, 
   }, [isEditingListTitle, editingTaskId]);
 
   const handleSaveListTitle = () => {
-    if (listTitleInput.trim() && listTitleInput !== list.title && onUpdateListTitle) {
+    
+    const trimmedInput=listTitleInput.trim()
+    if (trimmedInput === '' && onDeleteList) {
+      const confirmDelete = window.confirm(`Are you sure you want to delete the list "${list.title}"?`);
+      if (confirmDelete) {
+        onDeleteList(list.id);
+        return;
+      } else {
+       
+        setListTitleInput(list.title);
+        setIsEditingListTitle(false);
+        return;
+      }
+    }
+    if (trimmedInput && listTitleInput !== list.title && onUpdateListTitle) {
       onUpdateListTitle(list.id, listTitleInput.trim());
     }
     setIsEditingListTitle(false);
@@ -52,15 +81,10 @@ export default function TaskCard({ list, onAddTask, onDeleteTask, onToggleTask, 
     setEditingTaskId(null);
   };
 
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
-  };
+  const handleOpenModal = () => setIsModalOpen(true);
+  const handleCloseModal = () => setIsModalOpen(false);
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-  };
-  
-return (
+  return (
     <div className={`card mb-3 ${styles.listcontainer}`}>
       <div className="card-header d-flex justify-content-between align-items-center">
         {isEditingListTitle ? (
@@ -77,7 +101,7 @@ return (
           <h5 
             className="input m-0" 
             role="button" 
-            title="Click to edit title"
+            title="Click to edit list title"
             onClick={() => {
               setListTitleInput(list.title);
               setIsEditingListTitle(true);
@@ -87,12 +111,23 @@ return (
           </h5>
         )}
         
-        <button 
-          className="btn btn-sm btn-primary" 
-          onClick={() => setIsModalOpen(true)}
-        >
-          + Add Task
-        </button>
+        <div className="d-flex align-items-center gap-2">
+          <button 
+            className="btn btn-sm btn-primary" 
+            onClick={handleOpenModal}
+          >
+            + Add Task
+          </button>
+          
+          {isEditingMode && onDeleteList && (
+            <button 
+              className="btn btn-sm btn-outline-danger" 
+              onClick={() => onDeleteList(list.id)}
+            >
+              Delete List
+            </button>
+          )}
+        </div>
       </div>
     
       <div className="card-body">
@@ -109,21 +144,22 @@ return (
           }}
           animation={150}
         >
-          {tasksData.map((task) => {
+          {tasksData.map((task: { id: any; title: any; name: any; isCompleted: boolean | undefined; due_date: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | null | undefined; }, index: any) => {
             const taskId = task.id!;
+            const uniqueKey = taskId ? taskId : `temp-${index}`;
             const isEditingThisTask = editingTaskId === taskId;
             const displayTitle = task.title || task.name || '';
 
             return (
-              <li key={taskId} className={`mb-2 d-flex justify-content-between align-items-center ${styles.taskitem}`}>
+              <li key={uniqueKey} className={`mb-2 d-flex justify-content-between align-items-center ${styles.taskitem}`}>
                 <div className="d-flex align-items-center flex-grow-1 me-2">
                   <input 
                     type="checkbox" 
                     checked={task.isCompleted} 
-                    onChange={() => onToggleTask(taskId, list.id)} 
+                    onChange={() => taskId && onToggleTask(taskId, list.id)} 
                     className={`me-2 ${styles.checkmark}`}
                   />
-                  
+
                   {isEditingThisTask ? (
                     <input
                       ref={inputRef}
@@ -137,7 +173,7 @@ return (
                   ) : (
                     <span 
                       role="button"
-                      title="Click to edit task"
+                      title="Click to edit task title"
                       className={`flex-grow-1 ${task.isCompleted ? "text-decoration-line-through text-muted" : ""}`}
                       onClick={() => {
                         setEditingTaskId(taskId);
@@ -150,8 +186,8 @@ return (
                   
                   <span className="ms-3 text-muted small text-nowrap">{task.due_date}</span>
                 </div>
-                
-                {isEditingMode && (
+
+                {(taskId && isEditingMode) && (
                   <button 
                     className="btn btn-sm btn-outline-danger" 
                     onClick={() => onDeleteTask(taskId, list.id)}
@@ -167,7 +203,7 @@ return (
      
       {isModalOpen && (
         <AddTaskModal
-          onClose={() => setIsModalOpen(false)}
+          onClose={handleCloseModal}
           onSubmit={(title, dueDate) => onAddTask(list.id, title, dueDate)}
           listTitle={list?.title}
         />

@@ -3,17 +3,17 @@
 
 import React, { useState, useEffect } from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { TaskList, Task } from "@/app/checklist/types/task";
-import Navbar from "@/app/checklist/components/navbar";
-import TaskCard from "@/app/checklist/components/TaskCard";
+import { TaskList, Task } from "../types/task";
+import Navbar from "@/app/taska/components/navbar";
+import TaskCard from "@/app/taska/components/TaskCard";
+import AddTasklistModal from "@/app/taska/components/AddTasklistModal"; // Adjust path if needed
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 export default function TaskaList() {
   const [lists, setTaskLists] = useState<TaskList[]>([]);
-  const [newListTitle, setNewListTitle] = useState<string>('');
-  const [newListName, setNewListName] = useState<string>('');
   const [isEditingMode, setIsEditingMode] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false); // Modal state
 
   const toggleEdit = () => {
     setIsEditingMode(prev => !prev);
@@ -35,8 +35,8 @@ export default function TaskaList() {
     loadAll();
   }, []);
 
-  const handleAddList = () => {
-    const newList = { title: newListTitle, name: newListName };
+  const handleAddList = (title: string) => {
+    const newList = { title, name: title }; // Adapt fields based on your backend needs
 
     fetch(`${API_URL}/task-lists`, {
       method: 'POST',
@@ -46,10 +46,19 @@ export default function TaskaList() {
       .then((res) => res.json())
       .then((data) => {
         setTaskLists([...lists, data]);
-        setNewListTitle('');
-        setNewListName('');
+        setIsModalOpen(false); // Close modal on success
       })
       .catch((error) => console.error('Error adding list', error));
+  };
+
+  const handleDeleteList = (listId: number) => {
+    fetch(`${API_URL}/task-lists/${listId}`, {
+      method: 'DELETE',
+    })
+      .then(() => {
+        setTaskLists(lists.filter((list) => list.id !== listId));
+      })
+      .catch((error) => console.error('Error deleting list', error));
   };
 
   const handleAddTask = (listId: number, title: string, dueDate: string) => {
@@ -144,35 +153,32 @@ export default function TaskaList() {
 
   return (
     <div className="container py-4">
-      <button 
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <button 
           className={`btn btn-sm ${isEditingMode ? 'btn-secondary' : 'btn-outline-secondary'}`}
           onClick={toggleEdit}
         >
           {isEditingMode ? 'Done Editing' : 'Edit Mode'}
         </button>
-      <Navbar />
-      
-      {/* Create New List Section */}
-      <div className="card mb-4 p-3 bg-light">
-        <h5>Create New List</h5>
-        <div className="input-group mb-2">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="List Title"
-            value={newListTitle}
-            onChange={(e) => setNewListTitle(e.target.value)}
-          />
-          <input
-            type="text"
-            className="form-control"
-            placeholder="List Name/Slug"
-            value={newListName}
-            onChange={(e) => setNewListName(e.target.value)}
-          />
-          <button className="btn btn-success" onClick={handleAddList}>Add List</button>
-        </div>
+
+        {/* Button to trigger the modal */}
+        <button 
+          className="btn btn-success btn-sm"
+          onClick={() => setIsModalOpen(true)}
+        >
+          + Add New Tasklist
+        </button>
       </div>
+
+      <Navbar />
+
+      {/* Render the Modal conditionally */}
+      {isModalOpen && (
+        <AddTasklistModal 
+          onClose={() => setIsModalOpen(false)} 
+          onSubmit={handleAddList} 
+        />
+      )}
 
       {/* Render Lists */}
       {lists.map((list) => (
@@ -180,7 +186,8 @@ export default function TaskaList() {
           key={list.id} 
           list={list} 
           onAddTask={handleAddTask} 
-          onDeleteTask={handleDeleteTask} 
+          onDeleteTask={handleDeleteTask}
+          onDeleteList={handleDeleteList} 
           onToggleTask={toggleTaskDone} 
           onReorderTasks={handleReorderTasks}
           onUpdateListTitle={handleUpdateListTitle}
