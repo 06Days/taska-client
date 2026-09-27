@@ -84,7 +84,7 @@ export default function TaskaList() {
     })
       .then(() => {
         setTaskLists(lists.map((list) => 
-          list.id === listId ? { ...list, tasks: list.tasks.filter((task) => task.id !== taskId) } : list
+          list.id === listId ? { ...list, tasks: list.tasks.filter((task: { id: number; }) => task.id !== taskId) } : list
         ));
       })
       .catch((error) => console.error('Error deleting task', error));
@@ -98,7 +98,7 @@ export default function TaskaList() {
       .then((data) => {
         setTaskLists(lists.map((list) => 
           list.id === listId ? 
-            { ...list, tasks: list.tasks.map((task) => task.id === taskId ? data : task) } : list
+            { ...list, tasks: list.tasks.map((task: { id: number; }) => task.id === taskId ? data : task) } : list
         ));
       })
       .catch((error) => console.error('Error toggling task', error));
@@ -144,7 +144,7 @@ export default function TaskaList() {
         setTaskLists(lists.map((list) => 
           list.id === listId ? {
             ...list, 
-            tasks: list.tasks.map((task) => task.id === taskId ? data : task)
+            tasks: list.tasks.map((task: { id: number; }) => task.id === taskId ? data : task)
           } : list
         ));
       })
